@@ -1,1 +1,2 @@
-# HemoGAT
+# FlexibleMMSER-Graph
+-----------
