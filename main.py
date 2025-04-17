@@ -1,3 +1,4 @@
+import os
 import torch
 import torch.optim as optim
 import torch.nn as nn
@@ -6,7 +7,7 @@ from architecture.Model import MultiModalGNN
 from architecture.Graph_constructed import load_dataset
 from utils import set_seed, compute_metrics, train
 
-seeds = [42]
+seeds = [42, 123, 456, 789, 101112]
 metrics = {'WA': [], 'UA': [], 'WF1': [], 'UF1': []}
 
 train_path = '/home/nhut-minh-nguyen/Documents/Graph-for-SER/feature/IEMOCAP_BERT_WAV2VEC_train.pkl'
@@ -14,26 +15,30 @@ valid_path = '/home/nhut-minh-nguyen/Documents/Graph-for-SER/feature/IEMOCAP_BER
 test_path  = '/home/nhut-minh-nguyen/Documents/Graph-for-SER/feature/IEMOCAP_BERT_WAV2VEC_test.pkl'
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+save_path = "saved_models"
 
 for seed in seeds:
     print(f"\n=== Running seed {seed} ===")
     set_seed(seed)
 
-    train_data = load_dataset(train_path,k_text=3, k_audio=5, device=device)
-    valid_data = load_dataset(valid_path,k_text=3, k_audio=5, device=device)
-    test_data  = load_dataset(test_path,k_text=3, k_audio=5, device=device)
+    train_data = load_dataset(train_path,k_text=1, k_audio=3, device=device)
+    valid_data = load_dataset(valid_path,k_text=1, k_audio=3, device=device)
+    test_data  = load_dataset(test_path,k_text=1, k_audio=3, device=device)
 
     hidden_dim = 512
     num_classes = 4
 
     model = MultiModalGNN(hidden_dim, num_classes, num_layers=3).to(device)
     optimizer = optim.Adam(model.parameters(), lr=0.0001, weight_decay=5e-4)
-    scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode="min", factor=0.5, patience=15, verbose=False)
-    # scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=15, gamma=0.3)
+    scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode="min", factor=0.5, patience=15)
     criterion = nn.CrossEntropyLoss()
 
     train(model, train_data, valid_data, optimizer, scheduler, criterion, epochs=100)
 
+    model_path = os.path.join(save_path, f"IEMOCAP_HemoGAT.pt")
+    torch.save(model.state_dict(), model_path)
+    print(f"Model saved to {model_path}")
+    
     model.eval()
     test_data = test_data.to(device)
     with torch.no_grad():
