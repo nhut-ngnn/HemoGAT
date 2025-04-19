@@ -53,7 +53,7 @@ git clone https://github.com/nhut-ngnn/HemoGAT.git
 ### Create Conda Enviroment and Install Requirement
 Navigate to the project directory and create a Conda environment:
 ```
-cd FleSER
+cd HemoGAT
 conda create --name hemogat python=3.8
 conda activate hemogat
 ```
