@@ -1,6 +1,6 @@
 # HemoGAT: Heterogeneous multi-modal emotion recognition with cross-modal transformer and graph attention network
 <i>
-  Official code repository for the paper 
+  Official code repository for the manuscript 
   <b>"HemoGAT: Heterogeneous Multi-Modal Emotion Recognition with Cross-Modal Transformer and Graph Attention Network"</b>, 
   submitted to 
   <a href="https://www.tandfonline.com/journals/tjit20">Journal of Information and Telecommunication</a>.
