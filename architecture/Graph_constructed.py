@@ -61,9 +61,6 @@ def prepare_graph_data(data_list, k_text, k_audio):
     text_features = torch.from_numpy(np.array(text_features)).float()   
     audio_features = torch.from_numpy(np.array(audio_features)).float() 
     labels = torch.tensor(labels, dtype=torch.long)  
-
-    x = torch.cat([text_features, audio_features], dim=1)  
-    # edge_index = build_knn_graph_cosine(x, k=k)
     edge_index = build_dual_knn_graph_cosine(text_embeds=text_features, audio_embeds=audio_features, k_text=k_text, k_audio=k_audio)
 
     return Data(

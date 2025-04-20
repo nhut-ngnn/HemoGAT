@@ -10,9 +10,9 @@ from utils import set_seed, compute_metrics, train
 set_seed(42)
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
-train_path = '/home/nhut-minh-nguyen/Documents/Graph-for-SER/feature/IEMOCAP_BERT_WAV2VEC_train.pkl'
-valid_path = '/home/nhut-minh-nguyen/Documents/Graph-for-SER/feature/IEMOCAP_BERT_WAV2VEC_val.pkl'
-test_path  = '/home/nhut-minh-nguyen/Documents/Graph-for-SER/feature/IEMOCAP_BERT_WAV2VEC_test.pkl'
+train_path = 'feature/IEMOCAP_BERT_WAV2VEC_train.pkl'
+valid_path = 'feature/IEMOCAP_BERT_WAV2VEC_val.pkl'
+test_path  = 'feature/IEMOCAP_BERT_WAV2VEC_test.pkl'
 
 k_text_values = list(range(1, 11))
 k_audio_values = list(range(1, 11))

@@ -10,9 +10,9 @@ from utils import set_seed, compute_metrics, train
 seeds = [42, 123, 456, 789, 101112]
 metrics = {'WA': [], 'UA': [], 'WF1': [], 'UF1': []}
 
-train_path = '/home/nhut-minh-nguyen/Documents/Graph-for-SER/feature/IEMOCAP_BERT_WAV2VEC_train.pkl'
-valid_path = '/home/nhut-minh-nguyen/Documents/Graph-for-SER/feature/IEMOCAP_BERT_WAV2VEC_val.pkl'
-test_path  = '/home/nhut-minh-nguyen/Documents/Graph-for-SER/feature/IEMOCAP_BERT_WAV2VEC_test.pkl'
+train_path = 'feature/IEMOCAP_BERT_WAV2VEC_train.pkl'
+valid_path = 'feature/IEMOCAP_BERT_WAV2VEC_val.pkl'
+test_path  = 'feature/IEMOCAP_BERT_WAV2VEC_test.pkl'
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 save_path = "saved_models"
