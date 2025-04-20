@@ -6,35 +6,6 @@ from scipy.spatial import KDTree
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
-def build_knn_graph(embeddings, k):
-    embeddings = embeddings.cpu().numpy()
-    tree = KDTree(embeddings)
-    _, knn_indices = tree.query(embeddings, k=k+1)  
-
-    edge_index = []
-    for i in range(knn_indices.shape[0]):
-        for j in knn_indices[i][1:]:  
-            edge_index.append((i, j))
-            edge_index.append((j, i))  
-    return torch.tensor(edge_index, dtype=torch.long).T
-
-def build_knn_graph_cosine(embeddings, k):
-
-    embeddings = embeddings.to(device).cpu().numpy()
-    norms = np.linalg.norm(embeddings, axis=1, keepdims=True)
-    embeddings = embeddings / np.clip(norms, 1e-10, None)  
-
-    similarity_matrix = np.dot(embeddings, embeddings.T)
-    edge_index = []
-    for i in range(similarity_matrix.shape[0]):
-        top_k_indices = np.argsort(-similarity_matrix[i])[1:k+1]  
-        
-        for j in top_k_indices:
-            edge_index.append((i, j)) 
-
-    return torch.tensor(edge_index, dtype=torch.long).T
-
-
 def build_dual_knn_graph_cosine(text_embeds, audio_embeds, k_text, k_audio):
     def normalize(x):
         norms = np.linalg.norm(x, axis=1, keepdims=True)
