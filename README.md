@@ -3,7 +3,7 @@
   Official code repository for the manuscript 
   <b>"HemoGAT: Heterogeneous Multi-Modal Emotion Recognition with Cross-Modal Transformer and Graph Attention Network"</b>, 
   submitted to 
-  <a href="https://advances.vsb.cz/">Journal Articles in Electrical and Electronic Engineering</a>.
+  <a href="https://advances.vsb.cz/">Advances in Electrical and Electronic Engineering</a>.
 </i>
 
 > Please press ⭐ button and/or cite papers if you feel helpful.
