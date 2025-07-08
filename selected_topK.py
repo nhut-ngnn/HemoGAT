@@ -10,9 +10,9 @@ from utils import set_seed, compute_metrics, train
 set_seed(42)
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
-train_path = 'feature/IEMOCAP_BERT_WAV2VEC_train.pkl'
-valid_path = 'feature/IEMOCAP_BERT_WAV2VEC_val.pkl'
-test_path  = 'feature/IEMOCAP_BERT_WAV2VEC_test.pkl'
+train_path = 'feature/MELD_BERT_WAV2VEC_train.pkl'
+valid_path = 'feature/MELD_BERT_WAV2VEC_val.pkl'
+test_path  = 'feature/MELD_BERT_WAV2VEC_test.pkl'
 
 k_text_values = list(range(1, 11))
 k_audio_values = list(range(1, 11))
@@ -33,7 +33,7 @@ for k_text in k_text_values:
             print(f" Error loading dataset for k_text={k_text}, k_audio={k_audio}: {e}")
             continue
 
-        model = MultiModalGNN(hidden_dim=512, num_classes=4, num_layers=3).to(device)
+        model = MultiModalGNN(hidden_dim=512, num_classes=7, num_layers=3).to(device)
         optimizer = optim.Adam(model.parameters(), lr=0.0001, weight_decay=5e-4)
         scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode="min", factor=0.5, patience=15)
         criterion = nn.CrossEntropyLoss()

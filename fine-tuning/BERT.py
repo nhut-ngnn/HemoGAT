@@ -58,15 +58,13 @@ class TextDataset(Dataset):
 
         dropout_prob = 0.15
         augmented_words = [word for word in words if np.random.random() > dropout_prob]
-
         if len(augmented_words) == 0:
             augmented_words = [words[np.random.randint(len(words))]]
-
         return ' '.join(augmented_words)
 
 
 class BERTEmbeddingModel(nn.Module):
-    def __init__(self, embedding_dim=768, projection_dim=256):
+    def __init__(self, embedding_dim=768, projection_dim=512):
         super().__init__()
         self.bert = BertModel.from_pretrained('bert-base-uncased')
         self.projection = nn.Sequential(
@@ -90,7 +88,6 @@ class NTXentLoss(nn.Module):
     def forward(self, z1, z2):
         z1_norm = F.normalize(z1, dim=1)
         z2_norm = F.normalize(z2, dim=1)
-
         N = z1_norm.size(0)
         z_all = torch.cat([z1_norm, z2_norm], dim=0)
 
@@ -105,11 +102,10 @@ class NTXentLoss(nn.Module):
         return loss
 
 
-def train_embeddings(metadata_path, num_epochs=10, batch_size=32, learning_rate=2e-5):
+def train_embeddings(metadata_path, num_epochs=30, batch_size=32, learning_rate=2e-5, patience=5):
     tokenizer = BertTokenizer.from_pretrained('bert-base-uncased')
     model = BERTEmbeddingModel()
 
-    # Wrap the model in DataParallel for multi-GPU support
     if torch.cuda.device_count() > 1:
         print(f"Using {torch.cuda.device_count()} GPUs")
         model = nn.DataParallel(model)
@@ -127,9 +123,13 @@ def train_embeddings(metadata_path, num_epochs=10, batch_size=32, learning_rate=
     model = model.to(device)
 
     optimizer = AdamW(model.parameters(), lr=learning_rate)
+    scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.5, patience=2, verbose=True)
+
     criterion = NTXentLoss()
 
     best_loss = float('inf')
+    epochs_no_improve = 0
+
     for epoch in range(num_epochs):
         model.train()
         total_loss = 0
@@ -153,13 +153,24 @@ def train_embeddings(metadata_path, num_epochs=10, batch_size=32, learning_rate=
         avg_loss = total_loss / len(dataloader)
         print(f"Epoch {epoch+1}, Average Loss: {avg_loss:.4f}")
 
+        scheduler.step(avg_loss)
+
         if avg_loss < best_loss:
             best_loss = avg_loss
+            epochs_no_improve = 0
             torch.save({
                 'model_state_dict': model.module.state_dict() if torch.cuda.device_count() > 1 else model.state_dict(),
                 'loss': best_loss,
                 'epoch': epoch
-            }, '/home/minhnhut/Graph-for-SER/best_bert_embeddings.pt')
+            }, 'fine_tuning/model/best_bert_embeddings.pt')
+            print(f"Model improved, saving at epoch {epoch+1}.")
+        else:
+            epochs_no_improve += 1
+            print(f"No improvement for {epochs_no_improve} epoch(s).")
+
+        if epochs_no_improve >= patience:
+            print(f"Early stopping triggered at epoch {epoch+1}.")
+            break
 
     return model
 
@@ -184,10 +195,11 @@ def extract_embeddings(model, text, tokenizer):
 
 
 if __name__ == "__main__":
-    metadata_path = "/home/minhnhut/Graph-for-SER/metadata/IEMOCAP_metadata_train.csv"
+    metadata_path = "metadata/IEMOCAP_metadata_train.csv"
     model = train_embeddings(
         metadata_path=metadata_path,
         num_epochs=10,
         batch_size=32,
-        learning_rate=2e-5
+        learning_rate=2e-5,
+        patience=5
     )

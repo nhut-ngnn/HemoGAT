@@ -1,55 +1,100 @@
+import os
 import torch
-import torch.optim as optim
-import torch.nn as nn
+import numpy as np
+import argparse
+from sklearn.metrics import classification_report, precision_recall_fscore_support
+from fvcore.nn import FlopCountAnalysis, parameter_count_table
+from scipy import stats
+
 from architecture.Model import MultiModalGNN
 from architecture.Graph_constructed import load_dataset
-from utils import set_seed, compute_metrics
-from sklearn.metrics import confusion_matrix
-import seaborn as sns
-import matplotlib.pyplot as plt
-import numpy as np
+from utils import compute_metrics, set_seed, get_class_names
 
-set_seed(42)
-device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+parser = argparse.ArgumentParser(description="Predict with MultiModalGNN with FLOPs and flexible configs")
 
-test_path = 'feature/IEMOCAP_BERT_WAV2VEC_test.pkl'
+parser.add_argument("--data_dir", type=str, required=True, help="Folder containing feature .pkl files")
+parser.add_argument("--dataset", type=str, required=True, help="Dataset name (e.g., MELD, IEMOCAP)")
+parser.add_argument("--save_path", type=str, default="saved_models", help="Path where models and reports are saved")
+parser.add_argument("--num_classes", type=int, required=True, help="Number of classes in the dataset")
+parser.add_argument("--k_text", type=int, default=2, help="K-hop for text modality")
+parser.add_argument("--k_audio", type=int, default=8, help="K-hop for audio modality")
+parser.add_argument("--hidden_dim", type=int, default=512, help="Hidden dimension size")
 
-test_data  = load_dataset(test_path,k_text=3, k_audio=5, device=device)
+args = parser.parse_args()
 
-input_dim = test_data.x.shape[1]  
-hidden_dim = 256
-num_classes = 4
+test_path = os.path.join(args.data_dir, f"{args.dataset}_BERT_WAV2VEC_test.pkl")
+print(f"[INFO] Using dataset: {args.dataset}")
+print(f"[INFO] Test path: {test_path}")
 
-device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-model = MultiModalGNN(input_dim, hidden_dim, num_classes).to(device)
-optimizer = optim.Adam(model.parameters(), lr=0.0001, weight_decay=5e-4)
-scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.5, patience=30, verbose=True)
-criterion = nn.CrossEntropyLoss()
+seeds = [42, 50, 103, 128, 896]
+metrics = {
+    "WA": [], "UA": [], "WF1": [], "UF1": [],
+    "Precision": [], "Recall": [], "F1": []
+}
 
-model_path = "saved_models/IEMOCAP_GNN_SER.pt"
+test_data = load_dataset(test_path, k_text=args.k_text, k_audio=args.k_audio, device=device).to(device)
 
-model.load_state_dict(torch.load(model_path, map_location='cpu'))
-print(model.parameters())
+
+print("\n[INFO] Calculating FLOPs Count...")
+model = MultiModalGNN(args.hidden_dim, args.num_classes, num_layers=3).to(device)
 model.eval()
-test_data = test_data.to(device)
 
 with torch.no_grad():
-    test_out = model(test_data.x, test_data.edge_index)
-    test_pred = test_out.argmax(dim=1)
+    flops = FlopCountAnalysis(model, (test_data.text_x, test_data.audio_x, test_data.edge_index))
+    print(f"\n[INFO] Total FLOPs: {flops.total():,.0f}")
+    print(f"[INFO] Total GFLOPs: {flops.total() / 1e9:.3f} GFLOPs")
 
-y_true = test_data.y.cpu().numpy()
-y_pred = test_pred.cpu().numpy()
+for seed in seeds:
+    print(f"\n=== Evaluating Seed {seed} ===")
+    set_seed(seed)
 
-wa, ua , wf1, uf1 = compute_metrics(y_true, y_pred)
-print(f"Test WA (Accuracy): {wa:.4f}, Test UA (Balanced Accuracy): {ua:.4f}, Test WF1: {wf1:.4f}, Test UF1: {uf1:.4f}")
+    model = MultiModalGNN(args.hidden_dim, args.num_classes, num_layers=3).to(device)
+    model_path = os.path.join(args.save_path, f"{args.dataset}_MultiModalGNN_seed{seed}.pt")
+    model.load_state_dict(torch.load(model_path))
+    model.eval()
 
-conf_matrix = confusion_matrix(y_true, y_pred)
-conf_matrix_norm = conf_matrix.astype('float') / conf_matrix.sum(axis=1)[:, np.newaxis]  
+    with torch.no_grad():
+        test_out = model(test_data.text_x, test_data.audio_x, test_data.edge_index)
+        test_pred = test_out.argmax(dim=1)
 
-plt.figure(figsize=(6, 5))
-sns.heatmap(conf_matrix_norm, annot=True, fmt=".2f", cmap="Blues", xticklabels=range(num_classes), yticklabels=range(num_classes))
-plt.xlabel("Predicted Label")
-plt.ylabel("True Label")
-plt.title("Normalized Confusion Matrix")
-plt.show()
+    y_true = test_data.y.cpu().numpy()
+    y_pred = test_pred.cpu().numpy()
+
+    wa, ua, wf1, uf1 = compute_metrics(y_true, y_pred)
+    metrics["WA"].append(wa)
+    metrics["UA"].append(ua)
+    metrics["WF1"].append(wf1)
+    metrics["UF1"].append(uf1)
+
+    precision, recall, f1, _ = precision_recall_fscore_support(
+        y_true, y_pred, average="weighted", zero_division=0
+    )
+    metrics["Precision"].append(precision)
+    metrics["Recall"].append(recall)
+    metrics["F1"].append(f1)
+
+    class_names = get_class_names(args.num_classes)
+    target_names = [class_names[i] for i in range(args.num_classes)]
+
+    report = classification_report(y_true, y_pred, digits=4, target_names=target_names)
+    print(f"Classification Report for Seed {seed}:\n{report}")
+
+    os.makedirs(args.save_path, exist_ok=True)
+    report_path = os.path.join(args.save_path, f"classification_report_{args.dataset}_seed{seed}.txt")
+    with open(report_path, "w") as f:
+        f.write(f"Classification Report for Seed {seed}:\n")
+        f.write(report)
+
+def compute_mean_std_ci(arr):
+    mean = np.mean(arr)
+    std = np.std(arr, ddof=1)
+    t_value = stats.t.ppf(1 - 0.05/2, 4)
+    ci95 = t_value * std / np.sqrt(len(arr))
+    return mean, std, ci95
+
+print("\n=== Summary over 5 Seeds ===")
+for key in metrics.keys():
+    mean, std, ci95 = compute_mean_std_ci(metrics[key])
+    print(f"{key}: {mean:.4f} +/- {std:.4f} (95% CI +/- {ci95:.4f})")

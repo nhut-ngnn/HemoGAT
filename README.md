@@ -31,7 +31,7 @@
 
 [**Abstract**](#Abstract) •
 [**Install**](#install) •
-[**Usage**](#usage) •
+[**How to run**](#how-to-run) •
 [**References**](#references) •
 [**Citation**](#citation) •
 [**Contact**](#Contact)
@@ -61,9 +61,68 @@ conda activate hemogat
 ```
 pip install -r requirements.txt
 ```
+## How to run
 
+<p>
+  This section provides step-by-step instructions to <strong>extract features, train, and predict</strong> using <strong>HemoGAT</strong>.
+</p>
+
+<h3>1. Download HemoGAT Resources</h3>
+<p>
+  The pre-extracted data samples, pretrained models, and configuration files are available at:
+</p>
+<p>
+  <a href="https://drive.google.com/drive/folders/187ARizXiEco3Cwz97eroW8QHkZyZxh2g?usp=drive_link" target="_blank" rel="noopener noreferrer">
+    Download HemoGAT Resources
+  </a>
+</p>
+<p>
+  Download and extract the resources to your workspace before proceeding.
+</p>
+
+<h3>2. Feature Extraction</h3>
+<p>
+  To extract text and audio embeddings using BERT and wav2vec2, run:
+</p>
+<pre><code>python feature_extract/BERT_wav2vec2.py
+</code></pre>
+<p>
+  By default, this will load your dataset, extract BERT-based text embeddings and wav2vec2-based audio embeddings, and save them into a <code>feature</code> directory.
+</p>
+
+<h3>3. Training the Model</h3>
+<p>
+  To train HemoGAT on your extracted features, use:
+</p>
+<pre><code>python main.py --data_dir Path/to/feature/folder --dataset MELD --num_classes 7 --k_text 2 --k_audio 8
+</code></pre>
+<p>
+  <strong>Arguments:</strong>
+  <ul>
+    <li><code>--data_dir</code>: Path to the extracted feature folder.</li>
+    <li><code>--dataset</code>: Dataset to train on (e.g., MELD, IEMOCAP).</li>
+    <li><code>--num_classes</code>: Number of emotion classes.</li>
+    <li><code>--k_text</code>: Number of neighbors for the text graph.</li>
+    <li><code>--k_audio</code>: Number of neighbors for the audio graph.</li>
+  </ul>
+</p>
+
+<h3>4. Prediction</h3>
+<p>
+  To predict using the trained HemoGAT model, run:
+</p>
+<pre><code>python predict.py --data_dir feature --dataset MELD --num_classes 7 --k_text 2 --k_audio 8
+</code></pre>
+<p>
+  This will load your model checkpoint and output predicted emotion labels along with evaluation metrics.
+</p>
 
 ## References
+[1] Nhat Truong Pham, SERVER: Multi-modal Speech Emotion Recognition using Transformer-based and Vision-based Embeddings (ICIIT), 2023. Available https://github.com/nhattruongpham/mmser.git.
+
+[2] Mustaqeem Khan, MemoCMT: Cross-Modal Transformer-Based Multimodal Emotion Recognition System (Scientific Reports), 2025. Available https://github.com/tpnam0901/MemoCMT.
+
+[3] Nhut Minh Nguyen, FleSER: Multi-modal emotion recognition via dynamic fuzzy membership and attention fusion, 2025. Available https://github.com/aita-lab/FleSER.
 
 ## Citation
 If you use this code or part of it, please cite the following papers:

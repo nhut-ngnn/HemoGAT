@@ -9,7 +9,7 @@ from transformers import BertTokenizer, BertModel, Wav2Vec2Processor, Wav2Vec2Mo
 from tqdm import tqdm
 
 class BERTEmbeddingModel(torch.nn.Module):
-    def __init__(self, embedding_dim=768, projection_dim=256):
+    def __init__(self, embedding_dim=768, projection_dim=512):
         super().__init__()
         self.bert = BertModel.from_pretrained('bert-base-uncased')
         self.projection = torch.nn.Sequential(
@@ -25,7 +25,7 @@ class BERTEmbeddingModel(torch.nn.Module):
         return pooled, projection
 
 class AudioEmbeddingModel(torch.nn.Module):
-    def __init__(self, embedding_dim=768, projection_dim=256):
+    def __init__(self, embedding_dim=768, projection_dim=512):
         super().__init__()
         self.wav2vec = Wav2Vec2Model.from_pretrained("facebook/wav2vec2-base")
         self.projection = torch.nn.Sequential(
@@ -43,20 +43,19 @@ class AudioEmbeddingModel(torch.nn.Module):
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
-IEMOCAP_TRAIN_PATH = "/home/nhut-minh-nguyen/Documents/FuzzyFusion-SER/FlexibleMMSER/metadata/IEMOCAP_metadata_train.csv"
-IEMOCAP_VAL_PATH = "/home/nhut-minh-nguyen/Documents/FuzzyFusion-SER/FlexibleMMSER/metadata/IEMOCAP_metadata_val.csv"
-IEMOCAP_TEST_PATH = "/home/nhut-minh-nguyen/Documents/FuzzyFusion-SER/FlexibleMMSER/metadata/IEMOCAP_metadata_test.csv"
-OUTPUT_DIR = "/home/nhut-minh-nguyen/Documents/FuzzyFusion-SER/FlexibleMMSER/feature/"
+MELD_TRAIN_PATH = "metadata/metadata_same_text.csv"
+                  
+OUTPUT_DIR = "feature/"        
 
 TOKENIZER = BertTokenizer.from_pretrained('bert-base-uncased')
 TEXT_MODEL = BERTEmbeddingModel().to(device)
-text_checkpoint = torch.load('fine_tuning/model/IEMOCAP/best_bert_embeddings.pt')
+text_checkpoint = torch.load('fine_tuning/model/best_bert_embeddings.pt')
 TEXT_MODEL.load_state_dict(text_checkpoint['model_state_dict'])
 TEXT_MODEL.eval()
 
 AUDIO_PROCESSOR = Wav2Vec2Processor.from_pretrained("facebook/wav2vec2-base")
 AUDIO_MODEL = AudioEmbeddingModel().to(device)
-audio_checkpoint = torch.load('fine_tuning/model/IEMOCAP/best_wav2vec_embeddings.pt')
+audio_checkpoint = torch.load('fine_tuning/model/best_wav2vec_embeddings.pt')
 AUDIO_MODEL.load_state_dict(audio_checkpoint['model_state_dict'])
 AUDIO_MODEL.eval()
 
@@ -82,7 +81,7 @@ def extract_audio_features(audio_file, wav2vec_processor, wav2vec_model, device)
         waveform, sample_rate = torchaudio.load(audio_file)
 
         if sample_rate != 16000:
-            resampler = torchaudio.transforms.Resample(sample_rate, 16000)
+            resampler = torchaudio.transforms.Resample(sample_rate, 16000)    
             waveform = resampler(waveform)
 
         if waveform.shape[0] > 1:
@@ -137,8 +136,8 @@ def process_dataset(input_path, output_path, tokenizer, text_model, wav2vec_proc
 def main():
     print("Processing training set...")
     process_dataset(
-        IEMOCAP_TRAIN_PATH,
-        f"{OUTPUT_DIR}IEMOCAP_BERT_WAV2VEC_train.pkl",
+        MELD_TRAIN_PATH,
+        f"{OUTPUT_DIR}MELD_BERT_WAV2VEC_same_text.pkl",
         TOKENIZER,
         TEXT_MODEL,
         AUDIO_PROCESSOR,
@@ -146,27 +145,6 @@ def main():
         device
     )
 
-    print("Processing validation set...")
-    process_dataset(
-        IEMOCAP_VAL_PATH,
-        f"{OUTPUT_DIR}IEMOCAP_BERT_WAV2VEC_val.pkl",
-        TOKENIZER,
-        TEXT_MODEL,
-        AUDIO_PROCESSOR,
-        AUDIO_MODEL,
-        device
-    )
-
-    print("Processing testing set...")
-    process_dataset(
-        IEMOCAP_TEST_PATH,
-        f"{OUTPUT_DIR}IEMOCAP_BERT_WAV2VEC_test.pkl",
-        TOKENIZER,
-        TEXT_MODEL,
-        AUDIO_PROCESSOR,
-        AUDIO_MODEL,
-        device
-    )
 
 if __name__ == "__main__":
     main()
