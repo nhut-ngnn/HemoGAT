@@ -2,7 +2,6 @@ import torch
 import pickle
 import numpy as np
 from torch_geometric.data import Data
-from scipy.spatial import KDTree
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
